@@ -182,7 +182,11 @@ Function doFetchRemoteBranches {
 	Push-Location $Path
 	
 	# Remove all tracked branches from all remotes
-	git branch -r | xargs -l1 git branch -rD
+	$branches = git branch -r
+        $branches | ForEach-Object {
+               $branchName = $_.Trim()  # Remove leading and trailing spaces
+               git branch -r -d $branchName -q 2>$null
+       }
 	
 	# Track almost all the branches from my forks (not the "master" branch) without tags
 	git config remote.$USER_REMOTE_NAME.fetch +refs/heads/*:refs/remotes/$USER_REMOTE_NAME/*
