@@ -1,4 +1,4 @@
-$GIT_FOLDER = "platform-contributor-all\git"
+$GIT_FOLDER = "..\platform-master2\git"
 
 # GitHub username
 $GH_USERNAME = "fedejeanne"
@@ -6,8 +6,8 @@ $GH_USERNAME = "fedejeanne"
 # The "main" remote (the one from eclipse)
 $REMOTE_NAME = "origin"
 
-# My remote, where the forks are (fedejeanne-origin)
-$USER_REMOTE_NAME = $GH_USERNAME + "-origin"
+# My remote, where the forks are
+$USER_REMOTE_NAME = $GH_USERNAME
 
 Function syncFork {
 	Get-ChildItem $GIT_FOLDER | Select-Object Name | 
@@ -181,26 +181,51 @@ Function doFetchRemoteBranches {
 
 	Push-Location $Path
 	
-	# Remove all tracked branches from all remotes
+	Write-Output "Remove all tracked branches from all remotes"
 	$branches = git branch -r
         $branches | ForEach-Object {
                $branchName = $_.Trim()  # Remove leading and trailing spaces
                git branch -r -d $branchName -q 2>$null
        }
 	
-	# Track almost all the branches from my forks (not the "master" branch) without tags
+	Write-Output "Fetch branches from my fork (except the master branch), no tags"
 	git config remote.$USER_REMOTE_NAME.fetch +refs/heads/*:refs/remotes/$USER_REMOTE_NAME/*
 	# git config --add remote.$USER_REMOTE_NAME.fetch '^refs/heads/master'
 	git config remote.$USER_REMOTE_NAME.tagopt --no-tags
 	git fetch $USER_REMOTE_NAME
 	
-	# Do not track the "master" branch from my own fork (this will be undone by the next "fetch" on my fork)
+	Write-Output "Delete the master branch of my own fork"
 	git branch -d -r $USER_REMOTE_NAME/master
 	
-	# Track only the "master" branch from origin and no tags
+	Write-Output "Fetch the master branch from origin, no tags"
 	git config remote.$REMOTE_NAME.fetch +refs/heads/master:refs/remotes/$REMOTE_NAME/master
 	git config remote.$REMOTE_NAME.tagopt --no-tags
 	git fetch $REMOTE_NAME
 	
 	Pop-Location	
+}
+
+Function changeForksToHTTPS {
+	Push-Location $GIT_FOLDER
+
+	Get-ChildItem . | Select-Object Name | 
+	Foreach-Object {
+		doChangeForksToHTTPS($_.Name)
+	}
+
+	Pop-Location
+}
+	
+Function doChangeForksToHTTPS {
+	param ($Path)
+	Write-Output ***************************************
+	Write-Output $Path
+	Write-Output ***************************************
+
+	Push-Location $Path
+	
+	# Edit the remote
+	git remote set-url $USER_REMOTE_NAME https://github.com/$GH_USERNAME/$Path
+	
+	Pop-Location
 }
