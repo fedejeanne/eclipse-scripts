@@ -1,4 +1,4 @@
-$GIT_FOLDER = "..\platform-master2\git"
+$GIT_FOLDER = "..\platform-master3\git"
 
 # GitHub username
 $GH_USERNAME = "fedejeanne"
@@ -16,7 +16,6 @@ Function syncFork {
 	}
 }
 
-
 Function doSyncFork {
 	param ($Path)
 	Write-Output ***************************************
@@ -25,8 +24,6 @@ Function doSyncFork {
 	
 	# Sync fork with GitHub-CLI
 	gh repo sync $GH_USERNAME/$Path
-	
-	
 }
 	
 Function switchToMaster {
@@ -66,16 +63,16 @@ Function doSwitchToMaster {
 	git fetch --all --prune
 	
 	Pop-Location
-	
 }
-	
 
 Function switchToTaggedVersion {
 	param ($Tag)
 	
-	Get-ChildItem $GIT_FOLDER | Select-Object Name | 
+	Push-Location $GIT_FOLDER
+
+	Get-ChildItem . | Select-Object Name | 
 	Foreach-Object {
-		doSwitchToTaggedVersion($_.Name, $Tag)
+		doSwitchToTaggedVersion $_.Name $Tag
 	}
 }
 
@@ -87,7 +84,7 @@ Function doSwitchToTaggedVersion {
 
 	gh repo sync $GH_USERNAME/$Path
 
-	Push-Location $Path
+	Push-Location -Path $Path
 
 	Write-Output "fetching tags: $Tag"
 	git fetch $REMOTE_NAME tag $Tag --no-tags
@@ -102,40 +99,40 @@ Function doSwitchToTaggedVersion {
 	Pop-Location
 }
 
-# Function switchToRemoteBranch {
-# 	Push-Location $GIT_FOLDER
+Function switchToBranch {
+	param ($Tag)
 	
-# 	Set-Variable REMOTE_NAME=origin
-# 	Set-Variable REMOTE_BRANCH=%~2
+	Push-Location $GIT_FOLDER
 
-# 	for (/D %%d in ( * )) {
-# 		CALL :doSwitchToRemoteBranch %%d
-# 	}
+	Get-ChildItem . | Select-Object Name | 
+	Foreach-Object {
+		doSwitchToBranch $_.Name $Tag
+	}
+}
 
-# 	Pop-Location
-	
+Function doSwitchToBranch {
+	param ($Path, $Branch)
+	Write-Output ***************************************
+	Write-Output $Path
+	Write-Output ***************************************
+
+	gh repo sync $GH_USERNAME/$Path
+
+	Push-Location -Path $Path
+
+ 	Write-Output "fetching remote branch: $REMOTE_NAME/$Branch"
+ 	git remote set-branches --add $REMOTE_NAME $Branch
+ 	git fetch $REMOTE_NAME $Branch
 		
-# 	:doSwitchToRemoteBranch
-# 	Write-Output ***************************************
-# 	Write-Output $Path
-# 	Write-Output ***************************************
+ 	Write-Output "switching to $Branch"
+ 	git checkout --track --force $REMOTE_NAME/$Branch
 		
-# 	Push-Location $Path
+ 	Write-Output "Resetting everything, included untracked files"
+ 	git reset --hard
+ 	git clean -df
 		
-# 	Write-Output "fetching remote branch: $REMOTE_NAME/%REMOTE_BRANCH%"
-# 	git remote set-branches --add $REMOTE_NAME %REMOTE_BRANCH%
-# 	git fetch $REMOTE_NAME %REMOTE_BRANCH%
-		
-# 	Write-Output "switching to %REMOTE_BRANCH%"
-# 	git checkout --track --force $REMOTE_NAME/%REMOTE_BRANCH%
-		
-# 	Write-Output "Resetting everything, included untracked files"
-# 	git reset --hard
-# 	git clean -df
-		
-# 	Pop-Location
-	
-# }
+ 	Pop-Location
+}
 		
 Function addRemotes {
 	Push-Location $GIT_FOLDER
