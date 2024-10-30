@@ -153,6 +153,9 @@ Function doAddRemote {
 
 	Push-Location $Path
 	
+	Write-Output "Removing remote $USER_REMOTE_NAME"
+	git remote remove $USER_REMOTE_NAME
+	
 	Write-Output "Adding remote $USER_REMOTE_NAME -> https://github.com/$GH_USERNAME/$Path"
 	git remote add $USER_REMOTE_NAME https://github.com/$GH_USERNAME/$Path
 	
