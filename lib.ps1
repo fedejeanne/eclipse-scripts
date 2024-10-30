@@ -153,7 +153,7 @@ Function doAddRemote {
 
 	Push-Location $Path
 	
-	Write-Output "Adding remote https://github.com/$GH_USERNAME/$Path"
+	Write-Output "Adding remote $USER_REMOTE_NAME -> https://github.com/$GH_USERNAME/$Path"
 	git remote add $USER_REMOTE_NAME https://github.com/$GH_USERNAME/$Path
 	
 	Pop-Location
