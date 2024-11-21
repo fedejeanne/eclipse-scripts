@@ -1,5 +1,5 @@
 . .\lib.ps1 
 
-switchToRemoteBranch("R4_29_maintenance")
+switchToBranch "R4_32_maintenance"
 
 pause;
