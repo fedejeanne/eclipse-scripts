@@ -2,4 +2,4 @@
 
 syncFork
 
-# pause;
+pause;

@@ -1,7 +1,9 @@
-$GIT_FOLDER = "..\platform-master3\git"
+$GIT_FOLDER = "..\platform-master\git"
+#$GIT_FOLDER = "..\swt-master\git"
+#$GIT_FOLDER = "..\jdt-master-4.32\git"
 
 # GitHub username
-$GH_USERNAME = "fedejeanne"
+$GH_USERNAME = "vi-eclipse"
 
 # The "main" remote (the one from eclipse)
 $REMOTE_NAME = "origin"
@@ -190,7 +192,7 @@ Function doFetchRemoteBranches {
 	
 	Write-Output "Fetch branches from my fork (except the master branch), no tags"
 	git config remote.$USER_REMOTE_NAME.fetch +refs/heads/*:refs/remotes/$USER_REMOTE_NAME/*
-	# git config --add remote.$USER_REMOTE_NAME.fetch '^refs/heads/master'
+	git config --add remote.$USER_REMOTE_NAME.fetch '^refs/heads/master'
 	git config remote.$USER_REMOTE_NAME.tagopt --no-tags
 	git fetch $USER_REMOTE_NAME
 	
@@ -198,9 +200,34 @@ Function doFetchRemoteBranches {
 	git branch -d -r $USER_REMOTE_NAME/master
 	
 	Write-Output "Fetch the master branch from origin, no tags"
-	git config remote.$REMOTE_NAME.fetch +refs/heads/master:refs/remotes/$REMOTE_NAME/master
+	# Only track the master branch from "origin", no other branches
+	git config --replace-all remote.$REMOTE_NAME.fetch +refs/heads/master:refs/remotes/$REMOTE_NAME/master
 	git config remote.$REMOTE_NAME.tagopt --no-tags
 	git fetch $REMOTE_NAME
+	
+	Pop-Location	
+}
+
+Function fetchAll {
+	Push-Location $GIT_FOLDER
+
+	Get-ChildItem . | Select-Object Name | 
+	Foreach-Object {
+		doFetchAll($_.Name)
+	}
+	
+	Pop-Location
+}
+
+Function doFetchAll {
+	param ($Path)
+	Write-Output ***************************************
+	Write-Output $Path
+	Write-Output ***************************************
+
+	Push-Location $Path
+	
+	git fetch --all
 	
 	Pop-Location	
 }
