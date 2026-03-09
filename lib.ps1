@@ -1,6 +1,6 @@
-$GIT_FOLDER = "..\platform-master\git"
-#$GIT_FOLDER = "..\swt-master\git"
-#$GIT_FOLDER = "..\jdt-master-4.32\git"
+$GIT_FOLDER = "$PSScriptRoot\..\platform-master2\git"
+#$GIT_FOLDER = "$PSScriptRoot\..\swt-master\git"
+#$GIT_FOLDER = "$PSScriptRoot\..\jdt-master-4.32\git"
 
 # GitHub username
 $GH_USERNAME = "vi-eclipse"
@@ -227,7 +227,8 @@ Function doFetchAll {
 
 	Push-Location $Path
 	
-	git fetch --all
+	Write-Output "Pruning deleted remote branches"
+	git fetch --all --prune
 	
 	Pop-Location	
 }

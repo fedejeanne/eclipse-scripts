@@ -1,4 +1,4 @@
-. .\lib.ps1 
+. "$PSScriptRoot\lib.ps1" 
 
 addRemotes
 

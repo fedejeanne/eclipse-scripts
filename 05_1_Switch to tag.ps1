@@ -1,5 +1,5 @@
-. .\lib.ps1 
+. "$PSScriptRoot\lib.ps1" 
 
-switchToTaggedVersion "I20241120-1800"
+switchToTaggedVersion "I20251018-1800"
 
-pause;
+#pause;

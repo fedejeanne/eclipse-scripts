@@ -1,5 +1,5 @@
-. .\lib.ps1 
+. "$PSScriptRoot\lib.ps1" 
 
-switchToBranch "R4_34_maintenance"
+switchToBranch "R4_37_maintenance"
 
 pause;
