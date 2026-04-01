@@ -1,18 +1,16 @@
-$GIT_FOLDER = "$PSScriptRoot\..\platform-master2\git"
-#$GIT_FOLDER = "$PSScriptRoot\..\swt-master\git"
-#$GIT_FOLDER = "$PSScriptRoot\..\jdt-master-4.32\git"
+param(
+	[string]$GitFolder = "$PSScriptRoot\..\platform-master2\git",
+	[string]$GhUsername = "fedejeanne",
+	[string]$RemoteName = "origin",
+	[string]$UserRemoteName
+)
 
-# GitHub username
-$GH_USERNAME = "vi-eclipse"
-
-# The "main" remote (the one from eclipse)
-$REMOTE_NAME = "origin"
-
-# My remote, where the forks are
-$USER_REMOTE_NAME = $GH_USERNAME
+if (-not $PSBoundParameters.ContainsKey('UserRemoteName')) {
+	$UserRemoteName = $GhUsername
+}
 
 Function syncFork {
-	Get-ChildItem $GIT_FOLDER | Select-Object Name | 
+	Get-ChildItem $GitFolder | Select-Object Name | 
 	Foreach-Object {
 		doSyncFork($_.Name)
 	}
@@ -25,11 +23,35 @@ Function doSyncFork {
 	Write-Output ***************************************
 	
 	# Sync fork with GitHub-CLI
-	gh repo sync $GH_USERNAME/$Path
+	gh repo sync $GhUsername/$Path
+}
+
+Function cleanGone {
+	$resolvedGitFolder = Resolve-Path $GitFolder
+
+	Get-ChildItem $resolvedGitFolder -Directory | Select-Object FullName | 
+	Foreach-Object {
+		doCleanGone($_.FullName)
+	}
+}
+
+Function doCleanGone {
+	param ($Path)
+	Write-Output ***************************************
+	Write-Output $Path
+	Write-Output ***************************************
+	
+	# CD into directory
+	Push-Location $Path
+	
+	# Remove local branches that have been merged already
+	git fetch --all --prune; git branch -vv | sls 'gone]' | % { git branch -D ($_.ToString().Split()[0]) }
+	
+	Pop-Location
 }
 	
 Function switchToMaster {
-	Push-Location $GIT_FOLDER
+	Push-Location $GitFolder
 
 	Get-ChildItem . | Select-Object Name | 
 	Foreach-Object {
@@ -46,7 +68,7 @@ Function doSwitchToMaster {
 	Write-Output ***************************************
 
 	# Sync fork with GitHub-CLI
-	gh repo sync $GH_USERNAME/$Path
+	gh repo sync $GhUsername/$Path
 	
 	# CD into directory
 	Push-Location $Path
@@ -58,8 +80,8 @@ Function doSwitchToMaster {
 	git reset --hard
 	git clean -df
 	
-	git pull $REMOTE_NAME master
-	git rebase $REMOTE_NAME/master
+	git pull $RemoteName master
+	git rebase $RemoteName/master
 	
 	Write-Output "Pruning deleted remote branches"
 	git fetch --all --prune
@@ -70,7 +92,7 @@ Function doSwitchToMaster {
 Function switchToTaggedVersion {
 	param ($Tag)
 	
-	Push-Location $GIT_FOLDER
+	Push-Location $GitFolder
 
 	Get-ChildItem . | Select-Object Name | 
 	Foreach-Object {
@@ -84,12 +106,12 @@ Function doSwitchToTaggedVersion {
 	Write-Output $Path
 	Write-Output ***************************************
 
-	gh repo sync $GH_USERNAME/$Path
+	gh repo sync $GhUsername/$Path
 
 	Push-Location -Path $Path
 
 	Write-Output "fetching tags: $Tag"
-	git fetch $REMOTE_NAME tag $Tag --no-tags
+	git fetch $RemoteName tag $Tag --no-tags
 
 	Write-Output "switching to $Tag"
 	git checkout $Tag -f
@@ -104,7 +126,7 @@ Function doSwitchToTaggedVersion {
 Function switchToBranch {
 	param ($Tag)
 	
-	Push-Location $GIT_FOLDER
+	Push-Location $GitFolder
 
 	Get-ChildItem . | Select-Object Name | 
 	Foreach-Object {
@@ -118,16 +140,16 @@ Function doSwitchToBranch {
 	Write-Output $Path
 	Write-Output ***************************************
 
-	gh repo sync $GH_USERNAME/$Path
+	gh repo sync $GhUsername/$Path
 
 	Push-Location -Path $Path
 
- 	Write-Output "fetching remote branch: $REMOTE_NAME/$Branch"
- 	git remote set-branches --add $REMOTE_NAME $Branch
- 	git fetch $REMOTE_NAME $Branch
+ 	Write-Output "fetching remote branch: $RemoteName/$Branch"
+ 	git remote set-branches --add $RemoteName $Branch
+ 	git fetch $RemoteName $Branch
 		
  	Write-Output "switching to $Branch"
- 	git checkout --track --force $REMOTE_NAME/$Branch
+ 	git checkout --track --force $RemoteName/$Branch
 		
  	Write-Output "Resetting everything, included untracked files"
  	git reset --hard
@@ -137,7 +159,7 @@ Function doSwitchToBranch {
 }
 		
 Function addRemotes {
-	Push-Location $GIT_FOLDER
+	Push-Location $GitFolder
 
 	Get-ChildItem . | Select-Object Name | 
 	Foreach-Object {
@@ -155,17 +177,17 @@ Function doAddRemote {
 
 	Push-Location $Path
 	
-	Write-Output "Removing remote $USER_REMOTE_NAME"
-	git remote remove $USER_REMOTE_NAME
+	Write-Output "Removing remote $UserRemoteName"
+	git remote remove $UserRemoteName
 	
-	Write-Output "Adding remote $USER_REMOTE_NAME -> https://github.com/$GH_USERNAME/$Path"
-	git remote add $USER_REMOTE_NAME https://github.com/$GH_USERNAME/$Path
+	Write-Output "Adding remote $UserRemoteName -> https://github.com/$GhUsername/$Path"
+	git remote add $UserRemoteName https://github.com/$GhUsername/$Path
 	
 	Pop-Location
 }
 	
 Function fetchRemoteBranches {
-	Push-Location $GIT_FOLDER
+	Push-Location $GitFolder
 
 	Get-ChildItem . | Select-Object Name | 
 	Foreach-Object {
@@ -191,25 +213,25 @@ Function doFetchRemoteBranches {
        }
 	
 	Write-Output "Fetch branches from my fork (except the master branch), no tags"
-	git config remote.$USER_REMOTE_NAME.fetch +refs/heads/*:refs/remotes/$USER_REMOTE_NAME/*
-	git config --add remote.$USER_REMOTE_NAME.fetch '^refs/heads/master'
-	git config remote.$USER_REMOTE_NAME.tagopt --no-tags
-	git fetch $USER_REMOTE_NAME
+	git config remote.$UserRemoteName.fetch +refs/heads/*:refs/remotes/$UserRemoteName/*
+	git config --add remote.$UserRemoteName.fetch '^refs/heads/master'
+	git config remote.$UserRemoteName.tagopt --no-tags
+	git fetch $UserRemoteName
 	
 	Write-Output "Delete the master branch of my own fork"
-	git branch -d -r $USER_REMOTE_NAME/master
+	git branch -d -r $UserRemoteName/master
 	
 	Write-Output "Fetch the master branch from origin, no tags"
 	# Only track the master branch from "origin", no other branches
-	git config --replace-all remote.$REMOTE_NAME.fetch +refs/heads/master:refs/remotes/$REMOTE_NAME/master
-	git config remote.$REMOTE_NAME.tagopt --no-tags
-	git fetch $REMOTE_NAME
+	git config --replace-all remote.$RemoteName.fetch +refs/heads/master:refs/remotes/$RemoteName/master
+	git config remote.$RemoteName.tagopt --no-tags
+	git fetch $RemoteName
 	
 	Pop-Location	
 }
 
 Function fetchAll {
-	Push-Location $GIT_FOLDER
+	Push-Location $GitFolder
 
 	Get-ChildItem . | Select-Object Name | 
 	Foreach-Object {
@@ -234,7 +256,7 @@ Function doFetchAll {
 }
 
 Function changeForksToHTTPS {
-	Push-Location $GIT_FOLDER
+	Push-Location $GitFolder
 
 	Get-ChildItem . | Select-Object Name | 
 	Foreach-Object {
@@ -253,7 +275,7 @@ Function doChangeForksToHTTPS {
 	Push-Location $Path
 	
 	# Edit the remote
-	git remote set-url $USER_REMOTE_NAME https://github.com/$GH_USERNAME/$Path
+	git remote set-url $UserRemoteName https://github.com/$GhUsername/$Path
 	
 	Pop-Location
 }
