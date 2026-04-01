@@ -9,27 +9,37 @@ if (-not $PSBoundParameters.ContainsKey('UserRemoteName')) {
 	$UserRemoteName = $GhUsername
 }
 
+Function getRepositoryDirectories {
+	$resolvedGitFolder = (Resolve-Path $GitFolder).Path
+
+	Get-ChildItem -Path $resolvedGitFolder -Directory |
+	Where-Object {
+		Test-Path (Join-Path $_.FullName ".git")
+	}
+}
+
 Function syncFork {
-	Get-ChildItem $GitFolder | Select-Object Name | 
+	getRepositoryDirectories |
 	Foreach-Object {
-		doSyncFork($_.Name)
+		doSyncFork($_.FullName)
 	}
 }
 
 Function doSyncFork {
 	param ($Path)
+	$RepoPath = (Resolve-Path $Path).Path
+	$RepoName = Split-Path -Leaf $RepoPath
+
 	Write-Output ***************************************
-	Write-Output $Path
+	Write-Output $RepoPath
 	Write-Output ***************************************
 	
 	# Sync fork with GitHub-CLI
-	gh repo sync $GhUsername/$Path
+	gh repo sync $GhUsername/$RepoName
 }
 
 Function cleanGone {
-	$resolvedGitFolder = Resolve-Path $GitFolder
-
-	Get-ChildItem $resolvedGitFolder -Directory | Select-Object FullName | 
+	getRepositoryDirectories |
 	Foreach-Object {
 		doCleanGone($_.FullName)
 	}
@@ -37,12 +47,14 @@ Function cleanGone {
 
 Function doCleanGone {
 	param ($Path)
+	$RepoPath = (Resolve-Path $Path).Path
+
 	Write-Output ***************************************
-	Write-Output $Path
+	Write-Output $RepoPath
 	Write-Output ***************************************
 	
 	# CD into directory
-	Push-Location $Path
+	Push-Location $RepoPath
 	
 	# Remove local branches that have been merged already
 	git fetch --all --prune; git branch -vv | sls 'gone]' | % { git branch -D ($_.ToString().Split()[0]) }
@@ -51,27 +63,26 @@ Function doCleanGone {
 }
 	
 Function switchToMaster {
-	Push-Location $GitFolder
-
-	Get-ChildItem . | Select-Object Name | 
+	getRepositoryDirectories |
 	Foreach-Object {
-		doSwitchToMaster($_.Name)
+		doSwitchToMaster($_.FullName)
 	}
-
-	Pop-Location
 }
 	
 Function doSwitchToMaster {
 	param ($Path)
+	$RepoPath = (Resolve-Path $Path).Path
+	$RepoName = Split-Path -Leaf $RepoPath
+
 	Write-Output ***************************************
-	Write-Output $Path
+	Write-Output $RepoPath
 	Write-Output ***************************************
 
 	# Sync fork with GitHub-CLI
-	gh repo sync $GhUsername/$Path
+	gh repo sync $GhUsername/$RepoName
 	
 	# CD into directory
-	Push-Location $Path
+	Push-Location $RepoPath
 	
 	# Switch to master, discard uncommitted/unstaged changes
 	git checkout master -f
@@ -92,23 +103,24 @@ Function doSwitchToMaster {
 Function switchToTaggedVersion {
 	param ($Tag)
 	
-	Push-Location $GitFolder
-
-	Get-ChildItem . | Select-Object Name | 
+	getRepositoryDirectories |
 	Foreach-Object {
-		doSwitchToTaggedVersion $_.Name $Tag
+		doSwitchToTaggedVersion $_.FullName $Tag
 	}
 }
 
 Function doSwitchToTaggedVersion {
 	param ($Path, $Tag)
+	$RepoPath = (Resolve-Path $Path).Path
+	$RepoName = Split-Path -Leaf $RepoPath
+
 	Write-Output ***************************************
-	Write-Output $Path
+	Write-Output $RepoPath
 	Write-Output ***************************************
 
-	gh repo sync $GhUsername/$Path
+	gh repo sync $GhUsername/$RepoName
 
-	Push-Location -Path $Path
+	Push-Location -Path $RepoPath
 
 	Write-Output "fetching tags: $Tag"
 	git fetch $RemoteName tag $Tag --no-tags
@@ -126,23 +138,24 @@ Function doSwitchToTaggedVersion {
 Function switchToBranch {
 	param ($Tag)
 	
-	Push-Location $GitFolder
-
-	Get-ChildItem . | Select-Object Name | 
+	getRepositoryDirectories |
 	Foreach-Object {
-		doSwitchToBranch $_.Name $Tag
+		doSwitchToBranch $_.FullName $Tag
 	}
 }
 
 Function doSwitchToBranch {
 	param ($Path, $Branch)
+	$RepoPath = (Resolve-Path $Path).Path
+	$RepoName = Split-Path -Leaf $RepoPath
+
 	Write-Output ***************************************
-	Write-Output $Path
+	Write-Output $RepoPath
 	Write-Output ***************************************
 
-	gh repo sync $GhUsername/$Path
+	gh repo sync $GhUsername/$RepoName
 
-	Push-Location -Path $Path
+	Push-Location -Path $RepoPath
 
  	Write-Output "fetching remote branch: $RemoteName/$Branch"
  	git remote set-branches --add $RemoteName $Branch
@@ -159,51 +172,48 @@ Function doSwitchToBranch {
 }
 		
 Function addRemotes {
-	Push-Location $GitFolder
-
-	Get-ChildItem . | Select-Object Name | 
+	getRepositoryDirectories |
 	Foreach-Object {
-		doAddRemote($_.Name)
+		doAddRemote($_.FullName)
 	}
-
-	Pop-Location
 }
 	
 Function doAddRemote {
 	param ($Path)
+	$RepoPath = (Resolve-Path $Path).Path
+	$RepoName = Split-Path -Leaf $RepoPath
+
 	Write-Output ***************************************
-	Write-Output $Path
+	Write-Output $RepoPath
 	Write-Output ***************************************
 
-	Push-Location $Path
+	Push-Location $RepoPath
 	
 	Write-Output "Removing remote $UserRemoteName"
 	git remote remove $UserRemoteName
 	
-	Write-Output "Adding remote $UserRemoteName -> https://github.com/$GhUsername/$Path"
-	git remote add $UserRemoteName https://github.com/$GhUsername/$Path
+	Write-Output "Adding remote $UserRemoteName -> https://github.com/$GhUsername/$RepoName"
+	git remote add $UserRemoteName https://github.com/$GhUsername/$RepoName
 	
 	Pop-Location
 }
 	
 Function fetchRemoteBranches {
-	Push-Location $GitFolder
-
-	Get-ChildItem . | Select-Object Name | 
+	getRepositoryDirectories |
 	Foreach-Object {
-		doFetchRemoteBranches($_.Name)
+		doFetchRemoteBranches($_.FullName)
 	}
-	
-	Pop-Location
 }
 	
 Function doFetchRemoteBranches {
 	param ($Path)
+	$RepoPath = (Resolve-Path $Path).Path
+
 	Write-Output ***************************************
-	Write-Output $Path
+	Write-Output $RepoPath
 	Write-Output ***************************************
 
-	Push-Location $Path
+	Push-Location $RepoPath
 	
 	Write-Output "Remove all tracked branches from all remotes"
 	$branches = git branch -r
@@ -231,23 +241,21 @@ Function doFetchRemoteBranches {
 }
 
 Function fetchAll {
-	Push-Location $GitFolder
-
-	Get-ChildItem . | Select-Object Name | 
+	getRepositoryDirectories |
 	Foreach-Object {
-		doFetchAll($_.Name)
+		doFetchAll($_.FullName)
 	}
-	
-	Pop-Location
 }
 
 Function doFetchAll {
 	param ($Path)
+	$RepoPath = (Resolve-Path $Path).Path
+
 	Write-Output ***************************************
-	Write-Output $Path
+	Write-Output $RepoPath
 	Write-Output ***************************************
 
-	Push-Location $Path
+	Push-Location $RepoPath
 	
 	Write-Output "Pruning deleted remote branches"
 	git fetch --all --prune
@@ -256,26 +264,25 @@ Function doFetchAll {
 }
 
 Function changeForksToHTTPS {
-	Push-Location $GitFolder
-
-	Get-ChildItem . | Select-Object Name | 
+	getRepositoryDirectories |
 	Foreach-Object {
-		doChangeForksToHTTPS($_.Name)
+		doChangeForksToHTTPS($_.FullName)
 	}
-
-	Pop-Location
 }
 	
 Function doChangeForksToHTTPS {
 	param ($Path)
+	$RepoPath = (Resolve-Path $Path).Path
+	$RepoName = Split-Path -Leaf $RepoPath
+
 	Write-Output ***************************************
-	Write-Output $Path
+	Write-Output $RepoPath
 	Write-Output ***************************************
 
-	Push-Location $Path
+	Push-Location $RepoPath
 	
 	# Edit the remote
-	git remote set-url $UserRemoteName https://github.com/$GhUsername/$Path
+	git remote set-url $UserRemoteName https://github.com/$GhUsername/$RepoName
 	
 	Pop-Location
 }
